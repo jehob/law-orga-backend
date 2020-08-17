@@ -15,7 +15,6 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>
 
 import os
-from backend.recordmanagement.models import Record
 from backend.static.regex_validators import is_storage_folder_of_record
 
 STORAGE_FOLDER_PROFILE_PICTURES = "profile_pictures/"
