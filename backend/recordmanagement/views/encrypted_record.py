@@ -20,6 +20,7 @@ from rest_framework import status, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
 import logging
+import time
 
 from backend.api.errors import CustomError
 from backend.api.models import Notification, UserEncryptionKeys, UserProfile
@@ -38,6 +39,9 @@ class EncryptedRecordsListViewSet(viewsets.ViewSet):
         :param request:
         :return:
         """
+
+        start_record_list = time.time()
+
         logger = logging.getLogger(__name__)
         logger.error(
             "nothing important but error, "
@@ -80,6 +84,7 @@ class EncryptedRecordsListViewSet(viewsets.ViewSet):
         ):
             raise CustomError(error_codes.ERROR__API__PERMISSION__INSUFFICIENT)
 
+        start_query = time.time()
         entries = models.EncryptedRecord.objects.filter_by_rlc(user.rlc)
         for part in parts:
             consultants = UserProfile.objects.filter(name__icontains=part)
@@ -89,9 +94,24 @@ class EncryptedRecordsListViewSet(viewsets.ViewSet):
                 | Q(working_on_record__in=consultants)
                 | Q(record_token__icontains=part)
             ).distinct()
+        end_query = time.time()
+        logger.error("query took: " + str(end_query - start_query))
+
+        start_add_has_permission = time.time()
         data = serializers.EncryptedRecordNoDetailSerializer(
             entries, many=True
         ).add_has_permission(user)
+        end_add_has_permission = time.time()
+        logger.error(
+            "add has permission took: "
+            + str(end_add_has_permission - start_add_has_permission)
+        )
+
+        end_record_list = time.time()
+        logger.error(
+            "whole encrypted record list took: "
+            + str(end_record_list - start_record_list)
+        )
         return Response(data)
 
 
