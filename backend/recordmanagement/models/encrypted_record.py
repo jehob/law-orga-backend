@@ -19,6 +19,8 @@ from django.db.models import Q
 from datetime import datetime
 import pytz
 from django_prometheus.models import ExportModelOperationsMixin
+import logging
+import time
 
 from backend.api.errors import CustomError
 from backend.api.models import Rlc, UserProfile
@@ -266,16 +268,53 @@ class EncryptedRecord(ExportModelOperationsMixin("encrypted_record"), models.Mod
         """
         from backend.recordmanagement.models import EncryptedRecordPermission
 
-        return (
-            self.working_on_record.filter(id=user.id).count() == 1
-            or EncryptedRecordPermission.objects.filter(
+        logger = logging.getLogger(__name__)
+        start = time.time()
+        working_on = self.working_on_record.filter(id=user.id).count() == 1
+        end = time.time()
+        logger.error("user_has_permission, working on took: " + str(end - start))
+
+        start = time.time()
+        record_permission = (
+            EncryptedRecordPermission.objects.filter(
                 record=self, request_from=user, state="gr"
             ).count()
             == 1
-            or user.has_permission(
-                PERMISSION_VIEW_RECORDS_FULL_DETAIL_RLC, for_rlc=user.rlc
-            )
         )
+        end = time.time()
+        logger.error("user_has_permission, record_permission took: " + str(end - start))
+
+        start = time.time()
+        permission = user.has_permission(
+            PERMISSION_VIEW_RECORDS_FULL_DETAIL_RLC, for_rlc=user.rlc
+        )
+        end = time.time()
+        logger.error(
+            "user_has_permission, general_permission took: " + str(end - start)
+        )
+
+        return working_on or record_permission or permission
+
+    def user_has_single_record_permission(self, user):
+        from backend.recordmanagement.models import EncryptedRecordPermission
+
+        logger = logging.getLogger(__name__)
+        start = time.time()
+        working_on = self.working_on_record.filter(id=user.id).count() == 1
+        end = time.time()
+        logger.error("user_has_permission, working on took: " + str(end - start))
+
+        start = time.time()
+        record_permission = (
+            EncryptedRecordPermission.objects.filter(
+                record=self, request_from=user, state="gr"
+            ).count()
+            == 1
+        )
+        end = time.time()
+        logger.error("user_has_permission, record_permission took: " + str(end - start))
+
+        return working_on or record_permission
 
     def get_notification_emails(self):
         from backend.recordmanagement.models import EncryptedRecordPermission

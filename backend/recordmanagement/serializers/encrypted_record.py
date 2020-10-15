@@ -15,11 +15,13 @@
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>
 
 from rest_framework import serializers
+
 from backend.recordmanagement.models import EncryptedRecord
 from backend.api.serializers.user import UserProfileNameSerializer
 from .record_tag import RecordTagNameSerializer
 from backend.static.encryption import AESEncryption
 from backend.static.serializer_fields import EncryptedField
+from backend.static.permissions import PERMISSION_VIEW_RECORDS_FULL_DETAIL_RLC
 
 
 class EncryptedRecordFullDetailSerializer(serializers.ModelSerializer):
@@ -64,10 +66,18 @@ class EncryptedRecordFullDetailSerializer(serializers.ModelSerializer):
 class EncryptedRecordNoDetailListSerializer(serializers.ListSerializer):
     def add_has_permission(self, user):
         data = []
+        general_permission = user.has_permission(
+            PERMISSION_VIEW_RECORDS_FULL_DETAIL_RLC, for_rlc=user.rlc
+        )
         for record in self.instance.all():
-            has_permission = record.user_has_permission(user)
             record_data = EncryptedRecordNoDetailSerializer(record).data
-            record_data.update({"has_permission": has_permission})
+            record_data.update({"has_permission": True})
+
+            # if not general_permission:
+            #     has_permission = record.user_has_single_record_permission(user)
+            #     record_data.update({"has_permission": has_permission})
+            # else:
+            #     record_data.update({"has_permission": True})
             data.append(record_data)
         return data
 
