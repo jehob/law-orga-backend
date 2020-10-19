@@ -71,13 +71,13 @@ class EncryptedRecordNoDetailListSerializer(serializers.ListSerializer):
         )
         for record in self.instance.all():
             record_data = EncryptedRecordNoDetailSerializer(record).data
-            record_data.update({"has_permission": True})
+            # record_data.update({"has_permission": True})
 
-            # if not general_permission:
-            #     has_permission = record.user_has_single_record_permission(user)
-            #     record_data.update({"has_permission": has_permission})
-            # else:
-            #     record_data.update({"has_permission": True})
+            if not general_permission:
+                has_permission = record.user_has_single_record_permission(user)
+                record_data.update({"has_permission": has_permission})
+            else:
+                record_data.update({"has_permission": True})
             data.append(record_data)
         return data
 

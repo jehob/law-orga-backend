@@ -60,7 +60,7 @@ class EncryptedRecordsListViewSet(viewsets.ViewSet):
         )
 
         parts = request.query_params.get("search", "").split(" ")
-        user = request.user
+        user: UserProfile = request.user
 
         if user.is_superuser:
             entries = models.EncryptedRecord.objects.all()
@@ -106,6 +106,17 @@ class EncryptedRecordsListViewSet(viewsets.ViewSet):
             "add has permission took: "
             + str(end_add_has_permission - start_add_has_permission)
         )
+
+        # test !
+        start_test = time.time()
+        record_ids = [single_record.id for single_record in list(entries)]
+        a = models.EncryptedRecordPermission.objects.filter(
+            request_from=user, state="gr", record__id__in=record_ids
+        )
+        b = list(user.working_on_record.all())
+        end_test = time.time()
+        logger.error("test took: " + str(end_test - start_test))
+        c = 1000
 
         end_record_list = time.time()
         logger.error(
