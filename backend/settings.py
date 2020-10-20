@@ -76,11 +76,9 @@ INSTALLED_APPS = [
     "rest_framework.authtoken",
     "storages",
     "corsheaders",
-    "django_prometheus",
 ]
 
 MIDDLEWARE = [
-    "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -89,7 +87,6 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
 ROOT_URLCONF = "backend.urls"
@@ -138,7 +135,7 @@ if not env_true("LOCAL") and "DB_NAME" in os.environ:
     # remote database
     DATABASES = {
         "default": {
-            "ENGINE": "django_prometheus.db.backends.postgresql",
+            "ENGINE": "django.db.backends.postgresql",
             "NAME": os.environ["DB_NAME"],  # database
             "USER": os.environ["DB_USER"],  # user
             "PASSWORD": os.environ["DB_PASSWORD"],  # password
@@ -149,7 +146,7 @@ if not env_true("LOCAL") and "DB_NAME" in os.environ:
 else:
     DATABASES = {
         "default": {
-            "ENGINE": "django.db.backends.sqlite3",
+            "ENGINE": "django .db.backends.sqlite3",
             "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
         }
     }

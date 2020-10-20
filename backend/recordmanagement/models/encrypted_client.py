@@ -17,7 +17,6 @@
 from django.db import models
 from datetime import datetime
 import pytz
-from django_prometheus.models import ExportModelOperationsMixin
 
 from backend.static.encryption import RSAEncryption
 from backend.api.errors import CustomError
@@ -28,7 +27,7 @@ from backend.static.date_utils import parse_date
 from backend.static.encryption import AESEncryption
 
 
-class EncryptedClient(ExportModelOperationsMixin("encrypted_client"), models.Model):
+class EncryptedClient(models.Model):
     from_rlc = models.ForeignKey(
         Rlc, related_name="e_client_from_rlc", on_delete=models.SET_NULL, null=True
     )

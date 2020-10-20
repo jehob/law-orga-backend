@@ -18,7 +18,6 @@ from django.db import models
 from django.db.models import Q
 from datetime import datetime
 import pytz
-from django_prometheus.models import ExportModelOperationsMixin
 import logging
 import time
 
@@ -91,7 +90,7 @@ class EncryptedRecordQuerySet(models.QuerySet):
         return self.filter(from_rlc=rlc)
 
 
-class EncryptedRecord(ExportModelOperationsMixin("encrypted_record"), models.Model):
+class EncryptedRecord(models.Model):
     creator = models.ForeignKey(
         UserProfile,
         related_name="e_records_created",

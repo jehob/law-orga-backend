@@ -16,13 +16,12 @@
 
 from django.db import models
 from django.utils import timezone
-from django_prometheus.models import ExportModelOperationsMixin
 
 from backend.api.models import UserProfile
 from backend.static.notification_enums import NotificationGroupType
 
 
-class NotificationGroup(ExportModelOperationsMixin("notification_group"), models.Model):
+class NotificationGroup(models.Model):
     user = models.ForeignKey(
         UserProfile, related_name="notification_groups", on_delete=models.CASCADE
     )

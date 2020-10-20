@@ -20,14 +20,13 @@ import pytz
 from django.db import models
 from django.db.models.signals import post_save, pre_delete
 from django.dispatch import receiver
-from django_prometheus.models import ExportModelOperationsMixin
 
 from backend.api.models import UserProfile
 from backend.static.encrypted_storage import EncryptedStorage
 from .folder import Folder
 
 
-class File(ExportModelOperationsMixin("file"), models.Model):
+class File(models.Model):
     name = models.CharField(max_length=255)
 
     creator = models.ForeignKey(

@@ -16,14 +16,11 @@
 
 from django.db import models
 from django.utils import timezone
-from django_prometheus.models import ExportModelOperationsMixin
 
 from backend.api.models import UserProfile
 
 
-class EncryptedRecordDeletionRequest(
-    ExportModelOperationsMixin("encrypted_record_deletion_request"), models.Model
-):
+class EncryptedRecordDeletionRequest(models.Model):
     record = models.ForeignKey(
         "EncryptedRecord",
         related_name="deletions_requested",
