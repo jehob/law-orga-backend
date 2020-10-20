@@ -13,24 +13,29 @@
 #
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>
-
 from django.db import models
+from backend.api.models import UserProfile
 from django.utils import timezone
 
-from backend.api.models import UserProfile
 
-
-class EncryptedRecordDeletionRequest(models.Model):
-    record = models.ForeignKey(
-        "EncryptedRecord",
-        related_name="deletions_requested",
+class EncryptedRecordDocumentDeletionRequest(models.Model):
+    document = models.ForeignKey(
+        "EncryptedRecordDocument",
+        related_name="deletion_requests",
         on_delete=models.SET_NULL,
         null=True,
     )
+    record = models.ForeignKey(
+        "EncryptedRecord",
+        related_name="document_deletions_requests",
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+
     request_from = models.ForeignKey(UserProfile, on_delete=models.SET_NULL, null=True)
     request_processed = models.ForeignKey(
         UserProfile,
-        related_name="e_record_deletion_request_processed",
+        related_name="record_document_deletion_requests_processed",
         on_delete=models.SET_NULL,
         null=True,
     )
@@ -47,5 +52,5 @@ class EncryptedRecordDeletionRequest(models.Model):
         max_length=2, choices=record_deletion_request_states_possible, default="re"
     )
 
-    def __str__(self):
-        return "e record deletion request:" + str(self.id)
+    def __str__(self) -> str:
+        return "record document deletion request: " + str(self.id)

@@ -14,13 +14,18 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with this program.  If not, see <https://www.gnu.org/licenses/>
 
+from typing import Any
+import logging
+import time
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import Q, QuerySet, Case, When, Value, IntegerField
 from rest_framework import status, viewsets
 from rest_framework.response import Response
+from rest_framework.request import Request
 from rest_framework.views import APIView
 import logging
 import time
+from rest_framework.pagination import LimitOffsetPagination
 
 from backend.api.errors import CustomError
 from backend.api.models import Notification, UserEncryptionKeys, UserProfile
@@ -30,17 +35,86 @@ from backend.static.emails import EmailSender
 from backend.static.encryption import AESEncryption, RSAEncryption
 from backend.static.frontend_links import FrontendLinks
 from backend.static.middleware import get_private_key_from_request
+from backend.api.permissions import OnlyGet
 
 
-class EncryptedRecordsListViewSet(viewsets.ViewSet):
-    def list(self, request):
+class EncryptedRecordsListViewSet(viewsets.ModelViewSet):
+    queryset = models.EncryptedRecord.objects.all()
+    pagination_class = LimitOffsetPagination
+    serializer_class = serializers.EncryptedRecordNoDetailSerializer
+    permission_classes = (OnlyGet,)
+
+    def get_queryset(self) -> QuerySet:
+        if self.request.user.is_superuser:
+            queryset = models.EncryptedRecord.objects.all()
+        else:
+            queryset = models.EncryptedRecord.objects.filter_by_rlc(
+                self.request.user.rlc
+            )
+
+        request: Request = self.request
+        user: UserProfile = request.user
+        query_params = request.query_params
+
+        if "filter" in query_params and query_params["filter"] != "":
+            parts = query_params["filter"].split(" ")
+
+            for part in parts:
+                consultants = UserProfile.objects.filter(name__icontains=part)
+                queryset = queryset.filter(
+                    Q(tagged__name__icontains=part)
+                    | Q(note__icontains=part)
+                    | Q(working_on_record__in=consultants)
+                    | Q(record_token__icontains=part)
+                ).distinct()
+
+        if user.is_superuser or user.has_permission(
+            permissions.PERMISSION_VIEW_RECORDS_FULL_DETAIL_RLC, for_rlc=user.rlc
+        ):
+            queryset = queryset.annotate(access=Value(1))
+        else:
+            record_ids = [single_record.id for single_record in list(queryset)]
+            a = [
+                record_permission.record.id
+                for record_permission in list(
+                    models.EncryptedRecordPermission.objects.filter(
+                        request_from=user, state="gr", record__id__in=record_ids
+                    )
+                )
+            ]
+            b = [
+                record.id
+                for record in list(user.working_on_e_record.filter(id__in=record_ids))
+            ]
+            queryset = queryset.annotate(
+                access=Case(
+                    When(id__in=a + b, then=Value(1)),
+                    default=Value(0),
+                    output_field=IntegerField(),
+                )
+            )
+        if "sort" in request.query_params:
+            if (
+                "sortdirection" in request.query_params
+                and request.query_params["sortdirection"] == "desc"
+            ):
+                to_sort = "-" + request.query_params["sort"]
+            else:
+                to_sort = request.query_params["sort"]
+        else:
+            to_sort = "-access"
+
+        queryset = queryset.order_by(to_sort)
+
+        return queryset
+
+    def list(self, request: Request, **kwargs: Any):
         """
 
+        :param **kwargs:
         :param request:
         :return:
         """
-
-        start_record_list = time.time()
 
         logger = logging.getLogger(__name__)
         logger.error(
@@ -58,72 +132,32 @@ class EncryptedRecordsListViewSet(viewsets.ViewSet):
             + "; "
             + str(request.user.rlc)
         )
-
-        parts = request.query_params.get("search", "").split(" ")
+        start_record_list = time.time()
         user: UserProfile = request.user
 
-        if user.is_superuser:
-            entries = models.EncryptedRecord.objects.all()
-            for part in parts:
-                consultants = UserProfile.objects.filter(name__icontains=part)
-                entries = entries.filter(
-                    Q(tagged__name__icontains=part)
-                    | Q(note__icontains=part)
-                    | Q(working_on_record__in=consultants)
-                    | Q(record_token__icontains=part)
-                ).distinct()
-            serializer = serializers.EncryptedRecordNoDetailSerializer(
-                entries, many=True
+        if (
+            not user.has_permission(
+                permissions.PERMISSION_VIEW_RECORDS_RLC, for_rlc=user.rlc
             )
-            return Response(serializer.data)
-
-        if not user.has_permission(
-            permissions.PERMISSION_VIEW_RECORDS_RLC, for_rlc=user.rlc
-        ) and not user.has_permission(
-            permissions.PERMISSION_VIEW_RECORDS_FULL_DETAIL_RLC, for_rlc=user.rlc
+            and not user.has_permission(
+                permissions.PERMISSION_VIEW_RECORDS_FULL_DETAIL_RLC, for_rlc=user.rlc
+            )
+            and not user.is_superuser
         ):
             raise CustomError(error_codes.ERROR__API__PERMISSION__INSUFFICIENT)
 
-        start_query = time.time()
-        entries = models.EncryptedRecord.objects.filter_by_rlc(user.rlc)
-        for part in parts:
-            consultants = UserProfile.objects.filter(name__icontains=part)
-            entries = entries.filter(
-                Q(tagged__name__icontains=part)
-                | Q(note__icontains=part)
-                | Q(working_on_record__in=consultants)
-                | Q(record_token__icontains=part)
-            ).distinct()
-        end_query = time.time()
-        logger.error("query took: " + str(end_query - start_query))
-
-        start_add_has_permission = time.time()
-        data = serializers.EncryptedRecordNoDetailSerializer(
-            entries, many=True
-        ).add_has_permission(user)
-        end_add_has_permission = time.time()
-        logger.error(
-            "add has permission took: "
-            + str(end_add_has_permission - start_add_has_permission)
-        )
-
-        # test !
-        start_test = time.time()
-        record_ids = [single_record.id for single_record in list(entries)]
-        a = models.EncryptedRecordPermission.objects.filter(
-            request_from=user, state="gr", record__id__in=record_ids
-        )
-        b = list(user.working_on_record.all())
-        end_test = time.time()
-        logger.error("test took: " + str(end_test - start_test))
-        c = 1000
+        entries = self.get_queryset()
+        paginated = self.paginate_queryset(entries)
+        data = serializers.EncryptedRecordNoDetailListSerializer(
+            paginated, many=True
+        ).data
 
         end_record_list = time.time()
         logger.error(
             "whole encrypted record list took: "
             + str(end_record_list - start_record_list)
         )
-        return Response(data)
+        return self.get_paginated_response(data)
 
 
 class EncryptedRecordViewSet(APIView):
