@@ -18,7 +18,9 @@ from django.db import models
 
 
 class RecordTag(models.Model):
-    name = models.CharField(max_length=200, unique=True)
+    name = models.CharField(max_length=200, unique=True, null=True)
+    name_de = models.CharField(max_length=200)
+    name_it = models.CharField(max_length=200, null=True)
 
     def __str__(self):
-        return "recordtag: " + str(self.id) + ":" + self.name
+        return "recordtag: " + str(self.id) + ":" + str(self.name)

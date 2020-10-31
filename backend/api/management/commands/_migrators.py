@@ -35,10 +35,12 @@ from backend.recordmanagement.models import (
     RecordEncryption,
     RecordMessage,
     RecordPermission,
+    RecordTag,
 )
 from backend.static.encrypted_storage import EncryptedStorage
 from backend.static.encryption import AESEncryption, RSAEncryption
 from backend.static.file_utils import delete_file
+from backend.recordmanagement.statics.record_tag import prod_record_tags
 
 
 class OneTimeGenerators:
@@ -257,3 +259,34 @@ class Migrators:
         # delete old
         delete_file(local_path_to_file)
         delete_file(local_path_to_file + ".enc")
+
+    @staticmethod
+    def add_translations():
+        Migrators.add_record_tag_translations()
+        # TODO: add others here
+
+    @staticmethod
+    def add_record_tag_translations():
+        all: [RecordTag] = list(RecordTag.objects.all())
+        for tag in all:
+            print(tag)
+            print(tag.name_de)
+            print("_")
+
+        tags: {"name": str, "name_de": str, "name_it": str} = prod_record_tags
+        for tag in tags:
+            try:
+                # print("current tag: ", tag)
+                existing: RecordTag = RecordTag.objects.filter(
+                    name_de__contains=tag["name_de"]
+                ).first()
+                existing.name = tag["name"]
+                existing.name_de = tag["name_de"]
+                existing.name_it = tag["name_it"]
+                existing.save()
+            except Exception as e:
+                print("didnt find tag")
+                new_tag = RecordTag(
+                    name=tag["name"], name_de=tag["name_de"], name_it=tag["name_it"]
+                )
+                new_tag.save()

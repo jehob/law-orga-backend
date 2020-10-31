@@ -18,6 +18,7 @@ from datetime import date, datetime
 
 import pytz
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 
 from backend.api.models import *
 from backend.recordmanagement.models import (
@@ -446,6 +447,18 @@ class Fixtures:
         ]
         for tag in tags:
             AddMethods.add_record_document_tag(tag)
+
+    @staticmethod
+    def create_base_languages():
+        languages = [
+            ("Deutsch", "DE"),
+            ("Italiano", "IT"),
+            ("English", "EN"),
+            # ("Español", "ES"),
+            # ("Français", "FR"),
+        ]
+        for lang in languages:
+            AddMethods.add_language(lang)
 
     @staticmethod
     def create_real_starting_rlcs():
@@ -2023,7 +2036,6 @@ class AddMethods:
 		Args:
 			user_id: id of the user which will be added
 			rlc_id: id of the rlc which will the user will be added  to
-
 		Returns:
 
 		"""
@@ -2113,6 +2125,19 @@ class AddMethods:
             for tag_id in record[11]:
                 rc.tagged.add(RecordTag.objects.get(pk=tag_id))
             rc.save()
+
+    @staticmethod
+    def add_language(lang: tuple):
+        if lang.__len__() == 2:
+            try:
+                existing: Language = Language.objects.get(name=lang[0])
+            except ObjectDoesNotExist as e:
+                language_to_add: Language = Language(name=lang[0], language_code=[1])
+                language_to_add.save()
+                return
+            if not existing.language_code == lang[1]:
+                existing.language_code = lang[1]
+                existing.save()
 
     @staticmethod
     def generate_date(information):

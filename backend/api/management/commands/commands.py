@@ -78,21 +78,14 @@ def create_missing_key_entries():
 
 def migrate_to_encryption():
     reset_db_encrypted()
-    # EncryptedClient.objects.all().delete()
-    # EncryptedRecord.objects.all().delete()
-    # EncryptedRecordPermission.objects.all().delete()
-    # EncryptedRecordMessage.objects.all().delete()
-    # EncryptedRecordDocument.objects.all().delete()
-    # EncryptedRecordDeletionRequest.objects.all().delete()
-    #
-    # UserEncryptionKeys.objects.all().delete()
-    # RlcEncryptionKeys.objects.all().delete()
-    # RecordEncryption.objects.all().delete()
-    # UsersRlcKeys.objects.all().delete()
 
     OneTimeGenerators.generate_encryption_keys_for_all_users()
     OneTimeGenerators.generate_encryption_keys_for_rlc()
     Migrators.encrypt_all_records()
+
+
+def migrate_to_tag_management():
+    Migrators.add_translations()
 
 
 def aws_environment_variables_viable(command):
@@ -122,6 +115,10 @@ def aws_environment_variables_viable(command):
 def add_permissions():
     Fixtures.create_real_permissions_no_duplicates()
     Fixtures.create_real_folder_permissions_no_duplicate()
+
+
+def add_base_languages():
+    Fixtures.create_base_languages()
 
 
 def migrate_to_rlc_settings():
